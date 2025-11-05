@@ -1,6 +1,18 @@
+import sys
+from enum import Enum, IntEnum
+from typing import Any, Dict, List, Optional, Protocol, Type
+
 from homeassistant.components.vacuum import VacuumActivity
-from enum import IntEnum, StrEnum
-from typing import Protocol, Dict, List, Any, Type, Optional
+
+if sys.version_info >= (3, 11):
+    from enum import StrEnum as _StrEnum  # pragma: no cover
+else:
+    class _StrEnum(str, Enum):
+        """Fallback StrEnum implementation for Python < 3.11."""
+
+        pass
+
+StrEnum = _StrEnum
 
 
 class RoboVacEntityFeature(IntEnum):
