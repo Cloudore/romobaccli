@@ -1,0 +1,66 @@
+name: Release Please & HACS Publish
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: Create Release PR / Release
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
+        with:
+          egress-policy: audit
+
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b # v2.1.1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Run Release Please
+        id: release
+        uses: googleapis/release-please-action@a02a34c4d625f9be7cb89156071d8567266a2445 # v4
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+
+  publish-hacs:
+    name: Publish to HACS (Optional)
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' && needs.release-please.outputs.tag_name != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout code at new tag
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - name: HACS Validate / Publish
+        uses: hacs/action@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          category: 'integration'
+
+      - name: "HACS Publish Info"
+        run: |
+          echo "HACS publish job triggered for tag: ${{ needs.release-please.outputs.tag_name }}"
+          echo "Version determined by release-please: ${{ needs.release-please.outputs.version }}"
+          echo "This step validates the integration with HACS tools."
+          echo "Ensure your repository is correctly configured in HACS."
