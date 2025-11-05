@@ -6,70 +6,36 @@ import asyncio
 import getpass
 import json
 import logging
-import importlib.util
 import sys
 from datetime import datetime
 from pathlib import Path
-from types import ModuleType
 from typing import Any, Dict, Optional
 
 # Make the vendored robovac component importable when running the script from
 # this repository without requiring installation as a package.
 REPO_ROOT = Path(__file__).resolve().parent
 ROBOVAC_VENDOR_PATH = REPO_ROOT / "vendor" / "robovac"
-ROBOVAC_COMPONENT_PATH = ROBOVAC_VENDOR_PATH / "custom_components" / "robovac"
+if ROBOVAC_VENDOR_PATH.exists():
+    sys.path.insert(0, str(ROBOVAC_VENDOR_PATH))
 
-
-def _load_vendor_module(name: str, relative_path: str) -> ModuleType:
-    """Import a module from the vendored RoboVac integration without Home Assistant."""
-
-    module_path = ROBOVAC_COMPONENT_PATH / relative_path
-    if not module_path.exists():
-        raise RuntimeError(f"Vendored module {relative_path} is missing from {module_path}.")
-
-    if ROBOVAC_VENDOR_PATH.exists() and str(ROBOVAC_VENDOR_PATH) not in sys.path:
-        sys.path.insert(0, str(ROBOVAC_VENDOR_PATH))
-
-    spec = importlib.util.spec_from_file_location(name, module_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Unable to load RoboVac helper module {relative_path}.")
-
-    module = importlib.util.module_from_spec(spec)
-    try:
-        spec.loader.exec_module(module)
-    except ModuleNotFoundError as err:
-        missing = err.name or "a dependency"
-        raise RuntimeError(
-            "The RoboVac logger is missing the required Python dependency "
-            f"'{missing}'. Install the integration requirements with "
-            "'pip install -r vendor/robovac/requirements.txt' and try again."
-        ) from err
-    return module
-
-
-const_module = _load_vendor_module("robovac_const", "const.py")
-PING_RATE: int = getattr(const_module, "PING_RATE")
-TIMEOUT: int = getattr(const_module, "TIMEOUT")
-
-countries_module = _load_vendor_module("robovac_countries", "countries.py")
-get_phone_code_by_country_code = getattr(countries_module, "get_phone_code_by_country_code")
-get_phone_code_by_region = getattr(countries_module, "get_phone_code_by_region")
-get_region_by_country_code = getattr(countries_module, "get_region_by_country_code")
-get_region_by_phone_code = getattr(countries_module, "get_region_by_phone_code")
-
-eufy_module = _load_vendor_module("robovac_eufywebapi", "eufywebapi.py")
-EufyLogon = getattr(eufy_module, "EufyLogon")
-
-robovac_module = _load_vendor_module("robovac_device", "robovac.py")
-ModelNotSupportedException = getattr(robovac_module, "ModelNotSupportedException")
-RoboVac = getattr(robovac_module, "RoboVac")
-
-discovery_module = _load_vendor_module("robovac_discovery", "tuyalocaldiscovery.py")
-DiscoveryPortsNotAvailableException = getattr(discovery_module, "DiscoveryPortsNotAvailableException")
-TuyaLocalDiscovery = getattr(discovery_module, "TuyaLocalDiscovery")
-
-tuya_module = _load_vendor_module("robovac_tuyawebapi", "tuyawebapi.py")
-TuyaAPISession = getattr(tuya_module, "TuyaAPISession")
+# pylint: disable=wrong-import-position
+from custom_components.robovac.const import PING_RATE, TIMEOUT  # type: ignore[attr-defined]
+from custom_components.robovac.countries import (  # type: ignore[attr-defined]
+    get_phone_code_by_country_code,
+    get_phone_code_by_region,
+    get_region_by_country_code,
+    get_region_by_phone_code,
+)
+from custom_components.robovac.eufywebapi import EufyLogon  # type: ignore[attr-defined]
+from custom_components.robovac.robovac import (  # type: ignore[attr-defined]
+    ModelNotSupportedException,
+    RoboVac,
+)
+from custom_components.robovac.tuyalocaldiscovery import (  # type: ignore[attr-defined]
+    DiscoveryPortsNotAvailableException,
+    TuyaLocalDiscovery,
+)
+from custom_components.robovac.tuyawebapi import TuyaAPISession  # type: ignore[attr-defined]
 
 _LOGGER = logging.getLogger("robovac_logger")
 
